@@ -1,4 +1,4 @@
-# gXX · Caixa da Associação de Moradores
+# Caixa da Associação de Moradores
 
 Cloud Challenge · Desafio 07 · Prof. Roni Maciel · Senac 2026.2
 

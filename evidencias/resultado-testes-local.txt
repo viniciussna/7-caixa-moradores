@@ -1,0 +1,20 @@
+
+> gxx-caixa-moradores@1.0.0 test
+> node tests/testes.js
+
+
+BASE_URL: http://localhost:3000   (data de isolamento: 2010-02-21)
+
+| Caso | Esperado | Obtido | Resultado |
+|---|---|---|---|
+| CA1a valor 0 -> 400 | 400 | 400 | PASSOU |
+| CA1b valor -5 -> 400 | 400 | 400 | PASSOU |
+| CA1c valor 12.345 -> 400 (3 casas) | 400 | 400 | PASSOU |
+| CA2 data futura -> 400 | 400 | 400 | PASSOU |
+| CA3 10,10 + 20,20 + 0,70 = 31.00 exato | 31.00 | 31.00 (geral 31.00) | PASSOU |
+| CA4 período inclusivo e ignora fora das datas | total 31.00; dia anterior/seguinte ignorados | dia=31.00; 3 dias=331.00 | PASSOU |
+| CA5 editar despesa conferida -> 409 | 409 (e 409 ao excluir) | conferir 200, editar 409, excluir 409, reconferir 409 | PASSOU |
+| Extra: id inexistente -> 404 | 404 | 404 | PASSOU |
+| Extra: SQL injection no filtro não vaza erro interno | 400 | 400 | PASSOU |
+
+9/9 passaram

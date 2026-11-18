@@ -12,7 +12,7 @@ A associação presta contas todo mês em assembleia, mas as despesas ficam num 
 |---|---|
 | Thauan Bezerra da Veiga Pessoa | _QA_ |
 | _Arthur Vinicius Nascimento Silva_ | _NUVEM_ |
-| _(preencher)_ | _(preencher)_ |
+| Pedro Rodrigues do Nascimento Filho | DEV (interface) |
 
 Nível de implantação: _(A, B ou C — preencher conforme o painel da turma)_
 

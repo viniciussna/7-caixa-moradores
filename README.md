@@ -10,7 +10,7 @@ A associação presta contas todo mês em assembleia, mas as despesas ficam num 
 
 | Integrante | Papel |
 |---|---|
-| Thauan Bezerra da Veiga Pessoa (Denji) | _(preencher)_ |
+| Thauan Bezerra da Veiga Pessoa | _QA_ |
 | _(preencher)_ | _(preencher)_ |
 | _(preencher)_ | _(preencher)_ |
 

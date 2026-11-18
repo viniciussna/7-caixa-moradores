@@ -1,0 +1,56 @@
+### Requisições prontas (extensão "REST Client" do VS Code)
+@base = http://localhost:3000
+# Na Azure: @base = https://app-cloud-gXX-ab.azurewebsites.net
+
+### Health: testa a conexão com o banco
+GET {{base}}/health
+
+### Prova de persistência: registro GXX-PALAVRA (troque pela palavra do dia)
+POST {{base}}/api/despesas
+Content-Type: application/json
+
+{ "descricao": "GXX-PALAVRA", "valor": "1.00", "categoria": "outros", "data_despesa": "2026-11-18" }
+
+### Cadastrar despesa
+POST {{base}}/api/despesas
+Content-Type: application/json
+
+{ "descricao": "Troca de lâmpadas da portaria", "valor": "10.10", "categoria": "manutenção", "data_despesa": "2026-11-10" }
+
+### Listar tudo
+GET {{base}}/api/despesas
+
+### Listar por período e categoria
+GET {{base}}/api/despesas?de=2026-11-01&ate=2026-11-30&categoria=manutenção
+
+### Totais por categoria e total geral (calculados no banco)
+GET {{base}}/api/relatorio?de=2026-11-01&ate=2026-11-30
+
+### Editar (só não conferida)
+PUT {{base}}/api/despesas/1
+Content-Type: application/json
+
+{ "descricao": "Troca de lâmpadas (corrigido)", "valor": "12.50", "categoria": "manutenção" }
+
+### Marcar como conferida
+PATCH {{base}}/api/despesas/1/conferir
+
+### Excluir (409 se conferida, 404 se não existe)
+DELETE {{base}}/api/despesas/1
+
+### ---- Casos de erro ----
+
+### 400: valor com 3 casas
+POST {{base}}/api/despesas
+Content-Type: application/json
+
+{ "descricao": "Erro esperado", "valor": "12.345", "categoria": "outros", "data_despesa": "2026-11-10" }
+
+### 400: data futura
+POST {{base}}/api/despesas
+Content-Type: application/json
+
+{ "descricao": "Erro esperado", "valor": "5.00", "categoria": "outros", "data_despesa": "2999-01-01" }
+
+### 404: id inexistente
+DELETE {{base}}/api/despesas/999999

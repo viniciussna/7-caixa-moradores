@@ -11,7 +11,7 @@ A associação presta contas todo mês em assembleia, mas as despesas ficam num 
 | Integrante | Papel |
 |---|---|
 | Thauan Bezerra da Veiga Pessoa | _QA_ |
-| _(preencher)_ | _(preencher)_ |
+| _(Arthur Vinicius Nascimento Silva)_ | _(NUVEM)_ |
 | _(preencher)_ | _(preencher)_ |
 
 Nível de implantação: _(A, B ou C — preencher conforme o painel da turma)_

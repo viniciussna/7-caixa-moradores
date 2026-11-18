@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caixa da Associação</title>
+<style>
+  :root { --bg:#f5f7fa; --card:#fff; --txt:#1c2733; --mut:#5b6b7b; --pri:#0b5cab; --ok:#1a7f4b; --err:#b3261e; --bd:#d9e0e8; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--txt); }
+  header { background:var(--pri); color:#fff; padding:14px 20px; }
+  header h1 { margin:0; font-size:20px; }
+  main { max-width:960px; margin:0 auto; padding:16px; display:grid; gap:16px; }
+  section { background:var(--card); border:1px solid var(--bd); border-radius:8px; padding:16px; }
+  h2 { margin:0 0 10px; font-size:16px; }
+  form, .filtros { display:flex; flex-wrap:wrap; gap:8px; align-items:end; }
+  label { display:flex; flex-direction:column; font-size:12px; color:var(--mut); gap:3px; }
+  input, select, button { font:inherit; padding:7px 9px; border:1px solid var(--bd); border-radius:6px; }
+  button { background:var(--pri); color:#fff; border-color:var(--pri); cursor:pointer; }
+  button.sec { background:#fff; color:var(--pri); }
+  button.perigo { background:#fff; color:var(--err); border-color:var(--err); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--bd); }
+  td.num, th.num { text-align:right; font-variant-numeric: tabular-nums; }
+  .msg { margin-top:8px; font-size:13px; min-height:18px; }
+  .msg.ok { color:var(--ok); } .msg.err { color:var(--err); }
+  .tag { font-size:11px; padding:2px 6px; border-radius:10px; background:#e7f4ec; color:var(--ok); }
+  .acoes { display:flex; gap:4px; }
+  tfoot td { font-weight:700; }
+</style>
+</head>
+<body>
+<header><h1>Caixa da Associação de Moradores</h1></header>
+<main>
+  <section>
+    <h2>Registrar despesa</h2>
+    <form id="form-nova">
+      <label>Descrição <input name="descricao" required minlength="3" maxlength="200"></label>
+      <label>Valor (ex.: 12.50) <input name="valor" required inputmode="decimal" placeholder="0.00"></label>
+      <label>Categoria <select name="categoria"></select></label>
+      <label>Data <input name="data_despesa" type="date" required></label>
+      <button>Registrar</button>
+    </form>
+    <div class="msg" id="msg-nova"></div>
+  </section>
+
+  <section>
+    <h2>Despesas</h2>
+    <div class="filtros">
+      <label>De <input type="date" id="f-de"></label>
+      <label>Até <input type="date" id="f-ate"></label>
+      <label>Categoria <select id="f-cat"><option value="">Todas</option></select></label>
+      <button id="btn-filtrar">Filtrar</button>
+      <button id="btn-limpar" class="sec">Limpar</button>
+    </div>
+    <div class="msg" id="msg-lista"></div>
+    <table>
+      <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th class="num">Valor (R$)</th><th></th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Totais do período (calculados no banco)</h2>
+    <table>
+      <thead><tr><th>Categoria</th><th class="num">Qtd</th><th class="num">Total (R$)</th></tr></thead>
+      <tbody id="tb-rel"></tbody>
+      <tfoot><tr><td>Total geral</td><td class="num" id="rel-qtd">0</td><td class="num" id="rel-total">0.00</td></tr></tfoot>
+    </table>
+  </section>
+</main>
+
+<script>
+const CATEGORIAS = ['manutenção','limpeza','eventos','administrativo','outros'];
+const $ = (s) => document.querySelector(s);
+
+// O servidor usa o "hoje" de Brasília; o campo date usa o mesmo limite.
+const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+$('input[name=data_despesa]').max = hoje;
+$('input[name=data_despesa]').value = hoje;
+
+for (const c of CATEGORIAS) {
+  $('select[name=categoria]').add(new Option(c, c));
+  $('#f-cat').add(new Option(c, c));
+}
+
+function msg(el, texto, ok) { el.textContent = texto; el.className = 'msg ' + (ok ? 'ok' : 'err'); }
+
+// API recebe ponto; a interface aceita vírgula e converte só aqui.
+const normalizaValor = (v) => v.trim().replace(',', '.');
+const fmt = (v) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+async function api(url, opts) {
+  const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const corpo = r.status === 204 ? null : await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(corpo?.erro || 'erro ' + r.status);
+  return corpo;
+}
+
+function qs() {
+  const p = new URLSearchParams();
+  if ($('#f-de').value) p.set('de', $('#f-de').value);
+  if ($('#f-ate').value) p.set('ate', $('#f-ate').value);
+  if ($('#f-cat').value) p.set('categoria', $('#f-cat').value);
+  return p;
+}
+
+async function carregar() {
+  try {
+    const p = qs();
+    const despesas = await api('/api/despesas?' + p);
+    const rp = new URLSearchParams(); // relatório: só período
+    if (p.get('de')) rp.set('de', p.get('de'));
+    if (p.get('ate')) rp.set('ate', p.get('ate'));
+    const rel = await api('/api/relatorio?' + rp);
+    desenhaLista(despesas);
+    desenhaRelatorio(rel);
+    $('#msg-lista').textContent = '';
+  } catch (e) { msg($('#msg-lista'), e.message, false); }
+}
+
+function celula(tr, texto, cls) { const td = tr.insertCell(); td.textContent = texto; if (cls) td.className = cls; return td; }
+
+function desenhaLista(lista) {
+  const tb = $('#tbody'); tb.replaceChildren();
+  for (const d of lista) {
+    const tr = tb.insertRow();
+    celula(tr, d.data_despesa.split('-').reverse().join('/'));
+    celula(tr, d.descricao);
+    celula(tr, d.categoria);
+    celula(tr, fmt(d.valor), 'num');
+    const td = tr.insertCell(); td.className = 'acoes';
+    if (d.conferida) {
+      const t = document.createElement('span'); t.className = 'tag'; t.textContent = 'conferida'; td.append(t);
+    } else {
+      td.append(botao('Conferir', 'sec', () => acao(`/api/despesas/${d.id}/conferir`, { method: 'PATCH' })));
+      td.append(botao('Editar', 'sec', () => editar(d)));
+      td.append(botao('Excluir', 'perigo', () => { if (confirm('Excluir esta despesa?')) acao(`/api/despesas/${d.id}`, { method: 'DELETE' }); }));
+    }
+  }
+}
+
+function botao(txt, cls, fn) { const b = document.createElement('button'); b.textContent = txt; b.className = cls; b.onclick = fn; return b; }
+
+function desenhaRelatorio(rel) {
+  const tb = $('#tb-rel'); tb.replaceChildren();
+  for (const l of rel.por_categoria) {
+    const tr = tb.insertRow();
+    celula(tr, l.categoria); celula(tr, l.quantidade, 'num'); celula(tr, fmt(l.total), 'num');
+  }
+  $('#rel-qtd').textContent = rel.quantidade;
+  $('#rel-total').textContent = fmt(rel.total_geral);
+}
+
+async function acao(url, opts) {
+  try { await api(url, opts); await carregar(); }
+  catch (e) { msg($('#msg-lista'), e.message, false); }
+}
+
+async function editar(d) {
+  const descricao = prompt('Descrição:', d.descricao); if (descricao === null) return;
+  const valor = prompt('Valor (use ponto):', d.valor); if (valor === null) return;
+  const categoria = prompt('Categoria (' + CATEGORIAS.join(', ') + '):', d.categoria); if (categoria === null) return;
+  acao(`/api/despesas/${d.id}`, { method: 'PUT', body: JSON.stringify({ descricao, valor: normalizaValor(valor), categoria }) });
+}
+
+$('#form-nova').onsubmit = async (ev) => {
+  ev.preventDefault();
+  const f = new FormData(ev.target);
+  const corpo = Object.fromEntries(f);
+  corpo.valor = normalizaValor(corpo.valor);
+  try {
+    await api('/api/despesas', { method: 'POST', body: JSON.stringify(corpo) });
+    msg($('#msg-nova'), 'Despesa registrada.', true);
+    ev.target.descricao.value = ''; ev.target.valor.value = '';
+    await carregar();
+  } catch (e) { msg($('#msg-nova'), e.message, false); }
+};
+
+$('#btn-filtrar').onclick = carregar;
+$('#btn-limpar').onclick = () => { $('#f-de').value = ''; $('#f-ate').value = ''; $('#f-cat').value = ''; carregar(); };
+carregar();
+</script>
+</body>
+</html>
